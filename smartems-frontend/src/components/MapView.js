@@ -68,24 +68,27 @@ export default function MapView({ token }) {
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const fetchData = async () => {
-    try {
-      const [eRes, rRes, hRes] = await Promise.all([
-        fetch("http://localhost:8080/emergencies", { headers: authHeaders(token) }),
-        fetch("http://localhost:8080/responders", { headers: authHeaders(token) }),
-        fetch("http://localhost:8080/hospitals", { headers: authHeaders(token) }),
-      ]);
-      const [eData, rData, hData] = await Promise.all([
-        eRes.json(), rRes.json(), hRes.json(),
-      ]);
-      setEmergencies(Array.isArray(eData) ? eData : []);
-      setResponders(Array.isArray(rData) ? rData : []);
-      setHospitals(Array.isArray(hData) ? hData : []);
-      setLastUpdated(new Date().toLocaleTimeString());
-    } catch (err) {
-      console.error("❌ Fetch error:", err);
-    }
-  };
+ const fetchData = async () => {
+  try {
+    const [eRes, rRes, hRes] = await Promise.all([
+      fetch("http://localhost:8080/emergencies", { headers: authHeaders(token) }),
+      fetch("http://localhost:8080/responders", { headers: authHeaders(token) }),
+      fetch("http://localhost:8080/hospitals", { headers: authHeaders(token) }),
+    ]);
+
+    // ✅ Handle 403 gracefully
+    const eData = eRes.ok ? await eRes.json() : [];
+    const rData = rRes.ok ? await rRes.json() : [];
+    const hData = hRes.ok ? await hRes.json() : [];
+
+    setEmergencies(Array.isArray(eData) ? eData : []);
+    setResponders(Array.isArray(rData) ? rData : []);
+    setHospitals(Array.isArray(hData) ? hData : []);
+    setLastUpdated(new Date().toLocaleTimeString());
+  } catch (err) {
+    console.error("❌ Fetch error:", err);
+  }
+};
 
   // ✅ WebSocket — instant map updates
   const { connected } = useWebSocket((newEmergency) => {

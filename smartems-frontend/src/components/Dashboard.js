@@ -28,23 +28,28 @@ export default function Dashboard({ token }) {
   const [notification, setNotification] = useState(null); // ✅ popup state
 
   const fetchData = async () => {
-    try {
-      const [eRes, rRes, hRes] = await Promise.all([
-        fetch("http://localhost:8080/emergencies", { headers: authHeaders(token) }),
-        fetch("http://localhost:8080/responders", { headers: authHeaders(token) }),
-        fetch("http://localhost:8080/hospitals", { headers: authHeaders(token) }),
-      ]);
-      const [eData, rData, hData] = await Promise.all([
-        eRes.json(), rRes.json(), hRes.json(),
-      ]);
-      setEmergencies(Array.isArray(eData) ? eData : []);
-      setResponders(Array.isArray(rData) ? rData : []);
-      setHospitals(Array.isArray(hData) ? hData : []);
-      setLastUpdated(new Date().toLocaleTimeString());
-    } catch (err) {
-      console.error("Fetch error:", err);
-    }
-  };
+      console.log("🔑 Token:", token); // ← ADD THIS
+
+  try {
+    const [eRes, rRes, hRes] = await Promise.all([
+      fetch("http://localhost:8080/emergencies", { headers: authHeaders(token) }),
+      fetch("http://localhost:8080/responders", { headers: authHeaders(token) }),
+      fetch("http://localhost:8080/hospitals", { headers: authHeaders(token) }),
+    ]);
+
+    // ✅ Handle 403 gracefully — don't crash if forbidden
+    const eData = eRes.ok ? await eRes.json() : [];
+    const rData = rRes.ok ? await rRes.json() : [];
+    const hData = hRes.ok ? await hRes.json() : [];
+
+    setEmergencies(Array.isArray(eData) ? eData : []);
+    setResponders(Array.isArray(rData) ? rData : []);
+    setHospitals(Array.isArray(hData) ? hData : []);
+    setLastUpdated(new Date().toLocaleTimeString());
+  } catch (err) {
+    console.error("Fetch error:", err);
+  }
+};
 
   const deleteEmergency = async (id) => {
     await fetch(`http://localhost:8080/emergencies/${id}`, {

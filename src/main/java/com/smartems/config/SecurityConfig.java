@@ -40,10 +40,12 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/ws/**").permitAll()       // ✅ WebSocket
-                .requestMatchers("/responders/**").hasRole("ADMIN")
+                .requestMatchers("/emergencies/sos").permitAll() 
+                .requestMatchers("/firstaid/**").permitAll() // ✅ add this
+                .requestMatchers("/responders/**").hasAnyRole("ADMIN", "RESPONDER")
                 .requestMatchers("/hospitals/**").hasAnyRole("ADMIN", "RESPONDER")
                 .requestMatchers("/emergencies/**").hasAnyRole("ADMIN", "RESPONDER")
-                .anyRequest().authenticated()
+                .anyRequest().permitAll()
             )
             .userDetailsService(userDetailsService)          // ✅ Use DB
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

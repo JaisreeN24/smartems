@@ -3,6 +3,7 @@ import Dashboard from "./components/Dashboard";
 import EmergencyForm from "./components/EmergencyForm";
 import MapView from "./components/MapView";
 import Login from "./components/Login";
+import SOSButton from "./components/SOSButton"; // ✅ ADD THIS LINE
 import "./App.css";
 
 function App() {
@@ -75,6 +76,8 @@ function App() {
       {activeTab === "dashboard" && <Dashboard token={user.token} />}
       {activeTab === "form" && <EmergencyForm token={user.token} />}
       {activeTab === "map" && <MapView token={user.token} />}
+      {/* ✅ SOS Button — shows on all pages */}
+      <SOSButton />
     </div>
   );
 }

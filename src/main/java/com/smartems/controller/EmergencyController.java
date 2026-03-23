@@ -109,4 +109,48 @@ emergency.setSeverity(severity);
     public void delete(@PathVariable Long id) {
         emergencyRepository.deleteById(id);
     }
+    // ✅ Public SOS endpoint — no login needed
+@PostMapping("/sos")
+public Emergency sos(@RequestBody Emergency emergency) {
+
+    emergency.setStatus("PENDING");
+
+    // AI classify severity
+    String description = emergency.getType();
+    String severity = aiService.classifySeverity(description);
+    emergency.setSeverity(severity);
+
+    // Find best responder
+    List<FirstResponder> responders = responderRepository.findAll();
+    FirstResponder bestResponder = scoringService.findBestResponder(
+        responders,
+        emergency.getLatitude(),
+        emergency.getLongitude()
+    );
+
+    if (bestResponder != null) {
+        emergency.setStatus("ASSIGNED");
+        bestResponder.setAvailable(false);
+        responderRepository.save(bestResponder);
+        notificationService.notifyResponder(bestResponder);
+    } else {
+        emergency.setStatus("NO RESPONDER AVAILABLE");
+    }
+
+    // Find nearest hospital
+    var hospitals = hospitalRepository.findAll();
+    var bestHospital = hospitalService.findNearestHospital(
+        hospitals,
+        emergency.getLatitude(),
+        emergency.getLongitude()
+    );
+
+    if (bestHospital != null) {
+        emergency.setHospitalName(bestHospital.getName());
+    }
+
+    Emergency saved = emergencyRepository.save(emergency);
+    webSocketService.notifyNewEmergency(saved); // ✅ notify dashboard instantly
+    return saved;
+}
 }
