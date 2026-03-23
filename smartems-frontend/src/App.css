@@ -1,0 +1,70 @@
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: #0f172a;
+}
+
+.container {
+  padding: 20px;
+}
+
+.header {
+  color: white;
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.content {
+  display: flex;
+  gap: 20px;
+}
+
+/* LEFT PANEL */
+.sidebar {
+  width: 300px;
+  background: #111827;
+  padding: 15px;
+  border-radius: 10px;
+  color: white;
+  overflow-y: auto;
+  height: 500px;
+}
+
+.card {
+  background: #1f2937;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 8px;
+  transition: 0.3s;
+}
+
+.card:hover {
+  background: #374151;
+}
+
+/* STATUS COLORS */
+.status {
+  font-size: 12px;
+  padding: 3px 6px;
+  border-radius: 5px;
+}
+
+.status.ASSIGNED {
+  background: green;
+}
+
+.status.PENDING {
+  background: orange;
+}
+
+.status.NO_RESPONDER_AVAILABLE {
+  background: red;
+}
+
+/* MAP */
+.map {
+  flex: 1;
+  border-radius: 10px;
+  overflow: hidden;
+}

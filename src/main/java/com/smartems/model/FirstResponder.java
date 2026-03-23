@@ -1,11 +1,9 @@
 package com.smartems.model;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 @Entity
 @Table(name = "first_responders")
 public class FirstResponder {
@@ -18,6 +16,7 @@ public class FirstResponder {
     private double latitude;
     private double longitude;
     private boolean available;
+    private String location;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -33,4 +32,8 @@ public class FirstResponder {
     public void setLongitude(double longitude) { this.longitude = longitude; }
     public boolean isAvailable() { return available; }
     public void setAvailable(boolean available) { this.available = available; }
+    public String getLocation() {
+    return location;
+ 
+}
 }

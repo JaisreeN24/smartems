@@ -5,7 +5,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-
 @Entity
 @Table(name = "emergencies")
 public class Emergency {
@@ -17,6 +16,24 @@ public class Emergency {
     private String status;
     private String patientName;
     private String contactNumber;
+    private double latitude;
+private double longitude;
+private String hospitalName;
+
+private String severity;
+
+public String getSeverity() {
+    return severity;
+}
+
+public void setSeverity(String severity) {
+    this.severity = severity;
+}
+    public double getLatitude() { return latitude; }
+    public void setLatitude(double latitude) { this.latitude = latitude; }
+
+public double getLongitude() { return longitude; }
+public void setLongitude(double longitude) { this.longitude = longitude; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -30,4 +47,6 @@ public class Emergency {
     public void setPatientName(String patientName) { this.patientName = patientName; }
     public String getContactNumber() { return contactNumber; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+    public String getHospitalName() { return hospitalName; }
+    public void setHospitalName(String hospitalName) { this.hospitalName = hospitalName; }
 }
