@@ -29,7 +29,7 @@ public class SecurityConfig {
     private JwtFilter jwtFilter;
 
     @Autowired
-    private CustomUserDetailsService userDetailsService; // ✅ DB users
+    private CustomUserDetailsService userDetailsService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -39,23 +39,23 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
-                .requestMatchers("/ws/**").permitAll()       // ✅ WebSocket
-                .requestMatchers("/emergencies/sos").permitAll() 
-                .requestMatchers("/firstaid/**").permitAll() // ✅ add this
+                .requestMatchers("/ws/**").permitAll()
+                .requestMatchers("/emergencies/sos").permitAll()
+                .requestMatchers("/firstaid/**").permitAll()
+                .requestMatchers("/audit-logs/**").hasRole("ADMIN")
                 .requestMatchers("/responders/**").hasAnyRole("ADMIN", "RESPONDER")
                 .requestMatchers("/hospitals/**").hasAnyRole("ADMIN", "RESPONDER")
                 .requestMatchers("/emergencies/**").hasAnyRole("ADMIN", "RESPONDER")
                 .anyRequest().permitAll()
             )
-            .userDetailsService(userDetailsService)          // ✅ Use DB
+            .userDetailsService(userDetailsService)
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(
-            AuthenticationConfiguration config) throws Exception {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 

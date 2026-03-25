@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import useWebSocket from "../useWebSocket";
 
-// Fix default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -14,52 +13,43 @@ L.Icon.Default.mergeOptions({
 
 const authHeaders = (token) => ({
   "Content-Type": "application/json",
-  "Authorization": `Bearer ${token}`
+  Authorization: `Bearer ${token}`,
 });
 
 const severityColor = (severity) => {
-  if (severity === "CRITICAL") return "#ef4444";
-  if (severity === "HIGH") return "#f97316";
-  if (severity === "MEDIUM") return "#eab308";
-  return "#22c55e";
+  if (severity === "CRITICAL") return "#ff6d7b";
+  if (severity === "HIGH") return "#ffb34d";
+  if (severity === "MEDIUM") return "#ffe066";
+  return "#32d39a";
 };
 
-const emergencyIcon = (severity) => L.divIcon({
-  className: "",
-  html: `<div style="
-    background:${severityColor(severity)};
-    width:22px; height:22px; border-radius:50%;
-    border:3px solid white;
-    box-shadow:0 0 8px rgba(0,0,0,0.4);
-    display:flex; align-items:center; justify-content:center;
-    font-size:11px;">🚨</div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-});
+const statusColor = (status) => {
+  if (status === "ASSIGNED") return "#4da2ff";
+  if (status === "ACCEPTED") return "#32d39a";
+  if (status === "ARRIVED") return "#a272ff";
+  if (status === "CLOSED") return "#9aa9c0";
+  if (status === "PENDING") return "#ffb34d";
+  return "#94a3b8";
+};
 
-const responderIcon = L.divIcon({
-  className: "",
-  html: `<div style="
-    background:#3b82f6; width:22px; height:22px;
-    border-radius:50%; border:3px solid white;
-    box-shadow:0 0 8px rgba(0,0,0,0.4);
-    display:flex; align-items:center; justify-content:center;
-    font-size:11px;">🚑</div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-});
+const missionIcon = (label, color) =>
+  L.divIcon({
+    className: "",
+    html: `<div style="
+      width:30px;height:30px;border-radius:14px;
+      background:linear-gradient(145deg, ${color}, rgba(7,18,33,0.92));
+      border:1px solid rgba(255,255,255,0.4);
+      box-shadow:0 14px 24px rgba(0,0,0,0.28), 0 0 18px ${color}55;
+      display:flex;align-items:center;justify-content:center;
+      color:white;font-size:12px;font-weight:900;
+      font-family:Manrope, sans-serif;">${label}</div>`,
+    iconSize: [30, 30],
+    iconAnchor: [15, 15],
+  });
 
-const hospitalIcon = L.divIcon({
-  className: "",
-  html: `<div style="
-    background:#8b5cf6; width:22px; height:22px;
-    border-radius:50%; border:3px solid white;
-    box-shadow:0 0 8px rgba(0,0,0,0.4);
-    display:flex; align-items:center; justify-content:center;
-    font-size:11px;">🏥</div>`,
-  iconSize: [22, 22],
-  iconAnchor: [11, 11],
-});
+const emergencyIcon = (severity) => missionIcon("E", severityColor(severity));
+const responderIcon = missionIcon("R", "#4da2ff");
+const hospitalIcon = missionIcon("H", "#a272ff");
 
 export default function MapView({ token }) {
   const [emergencies, setEmergencies] = useState([]);
@@ -68,311 +58,290 @@ export default function MapView({ token }) {
   const [selectedEmergency, setSelectedEmergency] = useState(null);
   const [lastUpdated, setLastUpdated] = useState(null);
 
- const fetchData = async () => {
-  try {
-    const [eRes, rRes, hRes] = await Promise.all([
-      fetch("http://localhost:8080/emergencies", { headers: authHeaders(token) }),
-      fetch("http://localhost:8080/responders", { headers: authHeaders(token) }),
-      fetch("http://localhost:8080/hospitals", { headers: authHeaders(token) }),
-    ]);
+  const fetchData = useCallback(async () => {
+    try {
+      const [eRes, rRes, hRes] = await Promise.all([
+        fetch("http://localhost:8080/emergencies", { headers: authHeaders(token) }),
+        fetch("http://localhost:8080/responders", { headers: authHeaders(token) }),
+        fetch("http://localhost:8080/hospitals", { headers: authHeaders(token) }),
+      ]);
 
-    // ✅ Handle 403 gracefully
-    const eData = eRes.ok ? await eRes.json() : [];
-    const rData = rRes.ok ? await rRes.json() : [];
-    const hData = hRes.ok ? await hRes.json() : [];
+      const eData = eRes.ok ? await eRes.json() : [];
+      const rData = rRes.ok ? await rRes.json() : [];
+      const hData = hRes.ok ? await hRes.json() : [];
 
-    setEmergencies(Array.isArray(eData) ? eData : []);
-    setResponders(Array.isArray(rData) ? rData : []);
-    setHospitals(Array.isArray(hData) ? hData : []);
-    setLastUpdated(new Date().toLocaleTimeString());
-  } catch (err) {
-    console.error("❌ Fetch error:", err);
-  }
-};
+      setEmergencies(Array.isArray(eData) ? eData : []);
+      setResponders(Array.isArray(rData) ? rData : []);
+      setHospitals(Array.isArray(hData) ? hData : []);
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error("Fetch error:", err);
+    }
+  }, [token]);
 
-  // ✅ WebSocket — instant map updates
   const { connected } = useWebSocket((newEmergency) => {
-    setEmergencies(prev => {
-      const exists = prev.find(e => e.id === newEmergency.id);
-      if (exists) return prev;
-      return [newEmergency, ...prev];
-    });
+    setEmergencies((prev) => [newEmergency, ...prev.filter((e) => e.id !== newEmergency.id)]);
     setLastUpdated(new Date().toLocaleTimeString());
   });
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
+
+  const selectedHospital = selectedEmergency
+    ? hospitals.find((h) => h.name === selectedEmergency.hospitalName)
+    : null;
+
+  const mapStats = [
+    { label: "Tracked", value: emergencies.length, color: "#4da2ff" },
+    { label: "Critical", value: emergencies.filter((e) => e.severity === "CRITICAL").length, color: "#ff6d7b" },
+    { label: "Responders", value: responders.length, color: "#6be3ff" },
+    { label: "Hospitals", value: hospitals.length, color: "#a272ff" },
+  ];
 
   return (
-    <div style={{ fontFamily: "sans-serif", height: "100vh", display: "flex", flexDirection: "column" }}>
-
-      {/* Header */}
-      <div style={{
-        background: "#1e293b", color: "white", padding: "12px 20px",
-        display: "flex", justifyContent: "space-between", alignItems: "center",
-        flexShrink: 0
-      }}>
-        <h2 style={{ margin: 0, fontSize: "18px" }}>🗺️ SmartEMS Live Tracker</h2>
-
-        {/* ✅ Live indicator + updated time */}
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <span style={{
-            fontSize: "11px", fontWeight: "700", padding: "4px 10px",
-            borderRadius: "20px",
-            background: connected ? "#22c55e20" : "#ef444420",
-            color: connected ? "#22c55e" : "#ef4444",
-            border: `1px solid ${connected ? "#22c55e40" : "#ef444440"}`
-          }}>
-            {connected ? "⚡ Live" : "○ Connecting..."}
-          </span>
-          <span style={{ fontSize: "12px", color: "#94a3b8" }}>
-            🔄 Updated: {lastUpdated || "Loading..."}
-          </span>
-        </div>
-      </div>
-
-      {/* Stats Bar */}
-      <div style={{
-        display: "flex", gap: "10px", padding: "10px 16px",
-        background: "#f1f5f9", flexWrap: "wrap", flexShrink: 0
-      }}>
-        {[
-          { label: "All", value: emergencies.length, color: "#1e293b" },
-          { label: "🔴 Critical", value: emergencies.filter(e => e.severity === "CRITICAL").length, color: "#ef4444" },
-          { label: "🟠 High", value: emergencies.filter(e => e.severity === "HIGH").length, color: "#f97316" },
-          { label: "🟡 Medium", value: emergencies.filter(e => e.severity === "MEDIUM").length, color: "#eab308" },
-          { label: "🟢 Low", value: emergencies.filter(e => e.severity === "LOW").length, color: "#22c55e" },
-          { label: "🚑 Responders", value: responders.length, color: "#3b82f6" },
-          { label: "🏥 Hospitals", value: hospitals.length, color: "#8b5cf6" },
-        ].map((stat, i) => (
-          <div key={i} style={{
-            background: "white", borderRadius: "8px", padding: "6px 14px",
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)", textAlign: "center",
-            borderTop: `3px solid ${stat.color}`
-          }}>
-            <div style={{ fontSize: "18px", fontWeight: "bold", color: stat.color }}>{stat.value}</div>
-            <div style={{ fontSize: "11px", color: "#64748b" }}>{stat.label}</div>
+    <div style={{ minHeight: "100vh", color: "var(--text)" }}>
+      <div className="glass-panel strong" style={{ padding: 24, marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <div>
+            <span className="eyebrow">Mission map</span>
+            <h2 className="panel-title" style={{ marginTop: 12, fontSize: 40 }}>Live routing surface</h2>
+            <p className="panel-subtitle">Track incidents, assets, and destination facilities on a single tactical board.</p>
           </div>
-        ))}
-      </div>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <span className="status-pill live">{connected ? "Realtime feed active" : "Connecting"}</span>
+            <span className="status-pill">Updated {lastUpdated || "Loading..."}</span>
+          </div>
+        </div>
 
-      {/* Main Content */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-
-        {/* Sidebar */}
-        <div style={{
-          width: "270px", overflowY: "auto", background: "white",
-          borderRight: "1px solid #e2e8f0", padding: "10px", flexShrink: 0
-        }}>
-          <h4 style={{ margin: "0 0 10px", color: "#1e293b", fontSize: "14px" }}>
-            🚨 Emergencies ({emergencies.length})
-          </h4>
-
-          {emergencies.length === 0 && (
-            <p style={{ color: "#94a3b8", fontSize: "13px" }}>No emergencies found</p>
-          )}
-
-          {emergencies.map((e) => (
-            <div
-              key={e.id}
-              onClick={() => setSelectedEmergency(
-                selectedEmergency?.id === e.id ? null : e
-              )}
-              style={{
-                padding: "10px", marginBottom: "8px", borderRadius: "8px",
-                cursor: "pointer", border: `2px solid ${severityColor(e.severity)}`,
-                background: selectedEmergency?.id === e.id ? "#f8fafc" : "white",
-                transition: "all 0.2s"
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{
-                  fontSize: "10px", fontWeight: "bold", color: "white",
-                  background: severityColor(e.severity),
-                  padding: "2px 8px", borderRadius: "12px"
-                }}>
-                  {e.severity}
-                </span>
-                <span style={{ fontSize: "11px", color: "#94a3b8" }}>#{e.id}</span>
-              </div>
-              <div style={{ fontSize: "12px", marginTop: "6px", color: "#1e293b", fontWeight: "500" }}>
-                {e.type}
-              </div>
-              <div style={{ fontSize: "11px", color: "#64748b", marginTop: "2px" }}>
-                📍 {e.location}
-              </div>
-              <div style={{ fontSize: "11px", color: "#64748b" }}>
-                🏥 {e.hospitalName || "Not assigned"}
-              </div>
-              <div style={{
-                fontSize: "11px", marginTop: "4px", fontWeight: "bold",
-                color: e.status === "ASSIGNED" ? "#22c55e" : "#f97316"
-              }}>
-                ● {e.status}
-              </div>
-            </div>
-          ))}
-
-          {/* Responders Section */}
-          <h4 style={{ margin: "16px 0 10px", color: "#1e293b", fontSize: "14px" }}>
-            🚑 Responders ({responders.length})
-          </h4>
-          {responders.map((r) => (
-            <div key={r.id} style={{
-              padding: "8px 10px", marginBottom: "6px", borderRadius: "8px",
-              border: "1px solid #e2e8f0", fontSize: "12px"
-            }}>
-              <div style={{ fontWeight: "600", color: "#1e293b" }}>🚑 {r.name}</div>
-              <div style={{ color: "#64748b" }}>🔧 {r.skill}</div>
-              <div style={{
-                fontWeight: "bold", marginTop: "2px",
-                color: r.available ? "#22c55e" : "#ef4444"
-              }}>
-                {r.available ? "✅ Available" : "🔴 On Duty"}
-              </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12, marginTop: 18 }}>
+          {mapStats.map((stat) => (
+            <div key={stat.label} className="glass-panel" style={{ padding: 14, borderRadius: 18 }}>
+              <div className="eyebrow" style={{ color: stat.color }}>{stat.label}</div>
+              <div style={{ marginTop: 10, fontSize: 28, fontWeight: 800, color: stat.color }}>{stat.value}</div>
             </div>
           ))}
         </div>
+      </div>
 
-        {/* Map */}
-        <div style={{ flex: 1, position: "relative" }}>
-          <MapContainer
-            center={[13.0827, 80.2707]}
-            zoom={12}
-            style={{ height: "100%", width: "100%" }}
-          >
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; OpenStreetMap contributors'
-            />
+      <div className="map-shell">
+        <div className="glass-panel strong soft-scroll" style={{ padding: 18, overflowY: "auto", maxHeight: "calc(100vh - 240px)" }}>
+          <div className="eyebrow">Incident queue</div>
+          <h3 className="panel-title" style={{ marginTop: 10 }}>Emergency stack</h3>
 
-            {/* Emergency Markers */}
-            {emergencies.map((e) =>
-              e.latitude && e.longitude ? (
-                <Marker
-                  key={`e-${e.id}`}
-                  position={[e.latitude, e.longitude]}
-                  icon={emergencyIcon(e.severity)}
+          <div style={{ display: "grid", gap: 10, marginTop: 18 }}>
+            {emergencies.length === 0 ? (
+              <div className="glass-panel" style={{ padding: 20, borderRadius: 18 }}>
+                <p className="panel-subtitle">No emergencies found.</p>
+              </div>
+            ) : (
+              emergencies.map((e) => (
+                <button
+                  key={e.id}
+                  onClick={() => setSelectedEmergency(selectedEmergency?.id === e.id ? null : e)}
+                  className="glass-panel"
+                  style={{
+                    textAlign: "left",
+                    padding: 16,
+                    borderRadius: 20,
+                    cursor: "pointer",
+                    borderColor: selectedEmergency?.id === e.id ? `${severityColor(e.severity)}66` : "rgba(167, 199, 255, 0.12)",
+                    background: selectedEmergency?.id === e.id
+                      ? `linear-gradient(145deg, ${severityColor(e.severity)}16, rgba(17,31,53,0.8))`
+                      : undefined,
+                  }}
                 >
-                  <Popup>
-                    <div style={{ minWidth: "180px" }}>
-                      <strong style={{ color: severityColor(e.severity) }}>
-                        🚨 {e.severity}
-                      </strong>
-                      <p style={{ margin: "4px 0", fontSize: "13px" }}>{e.type}</p>
-                      <p style={{ margin: "2px 0", fontSize: "12px" }}>📍 {e.location}</p>
-                      <p style={{ margin: "2px 0", fontSize: "12px" }}>🏥 {e.hospitalName || "N/A"}</p>
-                      <p style={{
-                        margin: "2px 0", fontSize: "12px", fontWeight: "bold",
-                        color: e.status === "ASSIGNED" ? "#22c55e" : "#f97316"
-                      }}>
-                        {e.status}
-                      </p>
-                    </div>
-                  </Popup>
-                </Marker>
-              ) : null
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span
+                      style={{
+                        padding: "5px 10px",
+                        borderRadius: 999,
+                        background: `${severityColor(e.severity)}20`,
+                        border: `1px solid ${severityColor(e.severity)}33`,
+                        color: severityColor(e.severity),
+                        fontSize: 11,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {e.severity}
+                    </span>
+                    <span className="panel-subtitle" style={{ margin: 0 }}>#{e.id}</span>
+                  </div>
+                  <div style={{ marginTop: 12, fontWeight: 800 }}>{e.type}</div>
+                  <div className="panel-subtitle" style={{ marginTop: 8 }}>{e.location}</div>
+                  <div className="panel-subtitle">Responder: {e.responderName || "Unassigned"}</div>
+                  <div className="panel-subtitle">Hospital: {e.hospitalName || "Not assigned"}</div>
+                  <div style={{ marginTop: 10, color: statusColor(e.status), fontWeight: 800, fontSize: 12 }}>{e.status}</div>
+                </button>
+              ))
             )}
+          </div>
 
-            {/* Responder Markers */}
-            {responders.map((r) =>
-              r.latitude && r.longitude ? (
-                <Marker
-                  key={`r-${r.id}`}
-                  position={[r.latitude, r.longitude]}
-                  icon={responderIcon}
-                >
-                  <Popup>
-                    <div style={{ minWidth: "160px" }}>
-                      <strong>🚑 {r.name}</strong>
-                      <p style={{ margin: "4px 0", fontSize: "12px" }}>📞 {r.phone}</p>
-                      <p style={{ margin: "2px 0", fontSize: "12px" }}>🔧 {r.skill}</p>
-                      <p style={{
-                        margin: "2px 0", fontSize: "12px", fontWeight: "bold",
-                        color: r.available ? "#22c55e" : "#ef4444"
-                      }}>
-                        {r.available ? "✅ Available" : "🔴 On Duty"}
-                      </p>
+          <div style={{ marginTop: 22 }}>
+            <div className="eyebrow">Asset readiness</div>
+            <h3 className="panel-title" style={{ marginTop: 10, fontSize: 20 }}>Responders</h3>
+            <div style={{ display: "grid", gap: 10, marginTop: 14 }}>
+              {responders.map((r) => (
+                <div key={r.id} className="glass-panel" style={{ padding: 14, borderRadius: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <div>
+                      <div style={{ fontWeight: 800 }}>{r.name}</div>
+                      <div className="panel-subtitle" style={{ marginTop: 4 }}>{r.skill || "No specialization"}</div>
                     </div>
-                  </Popup>
-                </Marker>
-              ) : null
-            )}
+                    <span
+                      style={{
+                        padding: "6px 10px",
+                        borderRadius: 999,
+                        background: r.available ? "rgba(50,211,154,0.15)" : "rgba(255,109,123,0.15)",
+                        border: r.available ? "1px solid rgba(50,211,154,0.24)" : "1px solid rgba(255,109,123,0.22)",
+                        color: r.available ? "#8dffc9" : "#ffb7bf",
+                        fontSize: 11,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {r.available ? "Available" : "On duty"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
 
-            {/* Hospital Markers */}
-            {hospitals.map((h) =>
-              h.latitude && h.longitude ? (
-                <Marker
-                  key={`h-${h.id}`}
-                  position={[h.latitude, h.longitude]}
-                  icon={hospitalIcon}
-                >
-                  <Popup>
-                    <div style={{ minWidth: "160px" }}>
-                      <strong>🏥 {h.name}</strong>
-                      <p style={{ margin: "4px 0", fontSize: "12px" }}>📍 {h.address}</p>
-                      <p style={{ margin: "2px 0", fontSize: "12px" }}>📞 {h.phone}</p>
-                      <p style={{ margin: "2px 0", fontSize: "12px" }}>
-                        🛏️ Beds: {h.availableBeds}
-                      </p>
-                    </div>
-                  </Popup>
-                </Marker>
-              ) : null
-            )}
+        <div className="glass-panel strong" style={{ padding: 18, minHeight: "calc(100vh - 240px)" }}>
+          <div className="map-stage">
+            <div style={{ position: "relative", minHeight: 640 }}>
+              <MapContainer center={[13.0827, 80.2707]} zoom={12} style={{ height: "100%", width: "100%", borderRadius: 24 }}>
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap contributors"
+                />
 
-            {/* Route line: selected emergency → hospital */}
-            {selectedEmergency && (() => {
-              const hospital = hospitals.find(
-                h => h.name === selectedEmergency.hospitalName
-              );
-              if (hospital?.latitude && hospital?.longitude) {
-                return (
+                {emergencies.map((e) =>
+                  e.latitude && e.longitude ? (
+                    <Marker key={`e-${e.id}`} position={[e.latitude, e.longitude]} icon={emergencyIcon(e.severity)}>
+                      <Popup>
+                        <div style={{ minWidth: 180 }}>
+                          <strong style={{ color: severityColor(e.severity) }}>{e.severity}</strong>
+                          <p style={{ margin: "6px 0" }}>{e.type}</p>
+                          <p style={{ margin: "4px 0" }}>{e.location}</p>
+                          <p style={{ margin: "4px 0" }}>Responder: {e.responderName || "Unassigned"}</p>
+                          <p style={{ margin: "4px 0" }}>Hospital: {e.hospitalName || "N/A"}</p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ) : null
+                )}
+
+                {responders.map((r) =>
+                  r.latitude && r.longitude ? (
+                    <Marker key={`r-${r.id}`} position={[r.latitude, r.longitude]} icon={responderIcon}>
+                      <Popup>
+                        <div>
+                          <strong>{r.name}</strong>
+                          <p style={{ margin: "4px 0" }}>{r.skill}</p>
+                          <p style={{ margin: "4px 0" }}>{r.phone}</p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ) : null
+                )}
+
+                {hospitals.map((h) =>
+                  h.latitude && h.longitude ? (
+                    <Marker key={`h-${h.id}`} position={[h.latitude, h.longitude]} icon={hospitalIcon}>
+                      <Popup>
+                        <div>
+                          <strong>{h.name}</strong>
+                          <p style={{ margin: "4px 0" }}>{h.address}</p>
+                          <p style={{ margin: "4px 0" }}>Beds: {h.availableBeds}</p>
+                        </div>
+                      </Popup>
+                    </Marker>
+                  ) : null
+                )}
+
+                {selectedEmergency && selectedHospital?.latitude && selectedHospital?.longitude && (
                   <Polyline
                     positions={[
                       [selectedEmergency.latitude, selectedEmergency.longitude],
-                      [hospital.latitude, hospital.longitude],
+                      [selectedHospital.latitude, selectedHospital.longitude],
                     ]}
                     color={severityColor(selectedEmergency.severity)}
-                    weight={3}
-                    dashArray="8"
+                    weight={4}
+                    dashArray="10"
                   />
-                );
-              }
-              return null;
-            })()}
-          </MapContainer>
+                )}
+              </MapContainer>
 
-          {/* Legend */}
-          <div style={{
-            position: "absolute", bottom: "20px", right: "20px",
-            background: "white", padding: "12px", borderRadius: "10px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)", fontSize: "12px", zIndex: 1000
-          }}>
-            <strong style={{ display: "block", marginBottom: "6px" }}>Legend</strong>
-            {[
-              { color: "#ef4444", label: "🚨 Critical" },
-              { color: "#f97316", label: "🚨 High" },
-              { color: "#eab308", label: "🚨 Medium" },
-              { color: "#22c55e", label: "🚨 Low" },
-              { color: "#3b82f6", label: "🚑 Responder" },
-              { color: "#8b5cf6", label: "🏥 Hospital" },
-            ].map((item, i) => (
-              <div key={i} style={{
-                display: "flex", alignItems: "center",
-                gap: "8px", marginBottom: "4px"
-              }}>
-                <div style={{
-                  width: "12px", height: "12px", borderRadius: "50%",
-                  background: item.color, flexShrink: 0
-                }} />
-                <span>{item.label}</span>
+              <div
+                className="glass-panel"
+                style={{
+                  position: "absolute",
+                  left: 16,
+                  top: 16,
+                  padding: 14,
+                  borderRadius: 18,
+                  minWidth: 220,
+                }}
+              >
+                <div className="eyebrow">Map legend</div>
+                <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
+                  {[
+                    { color: "#ff6d7b", label: "Emergency" },
+                    { color: "#4da2ff", label: "Responder" },
+                    { color: "#a272ff", label: "Hospital" },
+                  ].map((item) => (
+                    <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <span style={{ width: 11, height: 11, borderRadius: 999, background: item.color }} />
+                      <span className="panel-subtitle" style={{ margin: 0 }}>{item.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ))}
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div className="glass-panel" style={{ padding: 18, borderRadius: 20 }}>
+                <div className="eyebrow">Selected mission</div>
+                {selectedEmergency ? (
+                  <>
+                    <h3 className="panel-title" style={{ marginTop: 12, fontSize: 24 }}>{selectedEmergency.type}</h3>
+                    <p className="panel-subtitle">{selectedEmergency.location}</p>
+                    <div style={{ display: "grid", gap: 10, marginTop: 16 }}>
+                      {[
+                        ["Severity", selectedEmergency.severity, severityColor(selectedEmergency.severity)],
+                        ["Status", selectedEmergency.status, statusColor(selectedEmergency.status)],
+                        ["Responder", selectedEmergency.responderName || "Unassigned"],
+                        ["Hospital", selectedEmergency.hospitalName || "Not assigned"],
+                      ].map(([label, value, color]) => (
+                        <div key={label} className="glass-panel" style={{ padding: 12, borderRadius: 16 }}>
+                          <div className="eyebrow" style={{ color: "var(--muted)" }}>{label}</div>
+                          <div style={{ marginTop: 8, fontWeight: 800, color: color || "var(--text)" }}>{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="panel-title" style={{ marginTop: 12, fontSize: 24 }}>No mission selected</h3>
+                    <p className="panel-subtitle">Choose any emergency from the queue to spotlight it on the board.</p>
+                  </>
+                )}
+              </div>
+
+              <div className="glass-panel" style={{ padding: 18, borderRadius: 20 }}>
+                <div className="eyebrow">Routing line</div>
+                <h3 className="panel-title" style={{ marginTop: 12, fontSize: 24 }}>Hospital path preview</h3>
+                <p className="panel-subtitle">
+                  {selectedEmergency && selectedHospital
+                    ? `Showing the current link from incident #${selectedEmergency.id} to ${selectedHospital.name}.`
+                    : "Select an emergency with a hospital assignment to preview the destination path."}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

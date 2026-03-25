@@ -2,14 +2,14 @@ import React, { useState } from "react";
 
 const authHeaders = (token) => ({
   "Content-Type": "application/json",
-  "Authorization": `Bearer ${token}`
+  Authorization: `Bearer ${token}`,
 });
 
 const severityColor = (severity) => {
-  if (severity === "CRITICAL") return "#ef4444";
-  if (severity === "HIGH") return "#f97316";
-  if (severity === "MEDIUM") return "#eab308";
-  return "#22c55e";
+  if (severity === "CRITICAL") return "#ff6d7b";
+  if (severity === "HIGH") return "#ffb34d";
+  if (severity === "MEDIUM") return "#ffe066";
+  return "#32d39a";
 };
 
 export default function EmergencyForm({ token }) {
@@ -27,20 +27,19 @@ export default function EmergencyForm({ token }) {
   const [error, setError] = useState(null);
   const [gpsStatus, setGpsStatus] = useState(null);
 
-  // ✅ Real GPS from browser
   const getGPS = () => {
     if (!navigator.geolocation) {
-      setGpsStatus("❌ GPS not supported in this browser");
+      setGpsStatus("GPS is not supported in this browser");
       return;
     }
+
     setGpsLoading(true);
-    setGpsStatus("📡 Getting your location...");
+    setGpsStatus("Getting your location...");
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const lat = position.coords.latitude.toFixed(6);
         const lng = position.coords.longitude.toFixed(6);
 
-        // Reverse geocode to get location name
         try {
           const res = await fetch(
             `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
@@ -50,21 +49,22 @@ export default function EmergencyForm({ token }) {
             ? data.display_name.split(",").slice(0, 3).join(", ")
             : `${lat}, ${lng}`;
 
-          setForm(prev => ({
+          setForm((prev) => ({
             ...prev,
             latitude: lat,
             longitude: lng,
             location: locationName,
           }));
-          setGpsStatus(`✅ Location detected!`);
+          setGpsStatus("Location detected");
         } catch {
-          setForm(prev => ({ ...prev, latitude: lat, longitude: lng }));
-          setGpsStatus("✅ GPS coordinates captured!");
+          setForm((prev) => ({ ...prev, latitude: lat, longitude: lng }));
+          setGpsStatus("GPS coordinates captured");
         }
+
         setGpsLoading(false);
       },
-      (err) => {
-        setGpsStatus("❌ GPS denied. Please allow location access.");
+      () => {
+        setGpsStatus("GPS denied. Please allow location access.");
         setGpsLoading(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -78,16 +78,18 @@ export default function EmergencyForm({ token }) {
 
   const handleSubmit = async () => {
     if (!form.type || !form.location || !form.latitude || !form.longitude) {
-      setError("Please fill in Type, Location, Latitude and Longitude!");
+      setError("Please fill in type, location, latitude, and longitude.");
       return;
     }
+
     setLoading(true);
     setResult(null);
     setError(null);
+
     try {
       const res = await fetch("http://localhost:8080/emergencies", {
         method: "POST",
-        headers: authHeaders(token),   // ✅ JWT token
+        headers: authHeaders(token),
         body: JSON.stringify({
           ...form,
           latitude: parseFloat(form.latitude),
@@ -99,247 +101,167 @@ export default function EmergencyForm({ token }) {
       setForm({ type: "", location: "", latitude: "", longitude: "", patientName: "", contactNumber: "" });
       setGpsStatus(null);
     } catch (err) {
-      setError("Failed to submit. Make sure backend is running!");
+      setError("Failed to submit. Make sure the backend is running.");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const quickExamples = [
-    { label: "🔴 Cardiac Arrest", type: "Patient cardiac arrest unconscious", location: "Chennai Central", lat: "13.0827", lng: "80.2707" },
-    { label: "🟠 High Fever", type: "Child with high fever 104F seizures", location: "Adyar", lat: "13.0012", lng: "80.2565" },
-    { label: "🟡 Mild Headache", type: "Mild headache and nausea", location: "Porur", lat: "13.0358", lng: "80.1567" },
-    { label: "🟢 Minor Bruise", type: "Small bruise on arm after minor fall", location: "Sholinganallur", lat: "12.9010", lng: "80.2279" },
+    { label: "Cardiac Arrest", type: "Patient cardiac arrest unconscious", location: "Chennai Central", lat: "13.0827", lng: "80.2707" },
+    { label: "High Fever", type: "Child with high fever 104F seizures", location: "Adyar", lat: "13.0012", lng: "80.2565" },
+    { label: "Mild Headache", type: "Mild headache and nausea", location: "Porur", lat: "13.0358", lng: "80.1567" },
+    { label: "Minor Bruise", type: "Small bruise on arm after minor fall", location: "Sholinganallur", lat: "12.9010", lng: "80.2279" },
   ];
 
   return (
-    <div style={{ background: "#0f172a", minHeight: "100vh", padding: "24px", color: "white" }}>
-      <div style={{ maxWidth: "700px", margin: "0 auto" }}>
-
-        {/* Header */}
-        <div style={{ marginBottom: "28px" }}>
-          <h1 style={{ margin: 0, fontSize: "26px", fontWeight: "800" }}>
-            🚨 Report Emergency
-          </h1>
-          <p style={{ margin: "6px 0 0", color: "#64748b", fontSize: "13px" }}>
-            AI will automatically classify severity and assign responder + hospital
-          </p>
+    <div style={{ minHeight: "100vh", color: "var(--text)" }}>
+      <div style={{ maxWidth: 940, margin: "0 auto" }}>
+        <div className="glass-panel strong" style={{ padding: 24, marginBottom: 22 }}>
+          <span className="eyebrow">Dispatch intake</span>
+          <h2 className="panel-title" style={{ marginTop: 12, fontSize: 40 }}>Report Emergency</h2>
+          <p className="panel-subtitle">Create a polished intake record with location, patient context, and live dispatch-ready coordinates.</p>
         </div>
 
-        {/* Quick Fill Buttons */}
-        <div style={{ marginBottom: "20px" }}>
-          <p style={{ color: "#94a3b8", fontSize: "12px", marginBottom: "8px" }}>
-            ⚡ Quick Test Examples:
-          </p>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            {quickExamples.map((ex, i) => (
-              <button
-                key={i}
-                onClick={() => quickFill(ex.type, ex.location, ex.lat, ex.lng)}
-                style={{
-                  background: "#1e293b", color: "#cbd5e1", border: "1px solid #334155",
-                  borderRadius: "8px", padding: "6px 12px", cursor: "pointer",
-                  fontSize: "12px", transition: "all 0.2s"
-                }}
-              >
+        <div className="glass-panel strong" style={{ padding: 24, marginBottom: 18 }}>
+          <div className="eyebrow">Quick scenarios</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 16 }}>
+            {quickExamples.map((ex) => (
+              <button key={ex.label} onClick={() => quickFill(ex.type, ex.location, ex.lat, ex.lng)} className="quick-chip">
                 {ex.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Form */}
-        <div style={{ background: "#1e293b", borderRadius: "16px", padding: "28px" }}>
+        <div className="glass-panel strong" style={{ padding: 28 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 18 }}>
+            <div className="field">
+              <label>Emergency Description</label>
+              <textarea
+                rows={4}
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                placeholder="Describe the emergency in clear operational language..."
+              />
+            </div>
 
-          {/* Emergency Type */}
-          <div style={{ marginBottom: "18px" }}>
-            <label style={{ display: "block", fontSize: "13px", color: "#94a3b8", marginBottom: "6px", fontWeight: "600" }}>
-              🚨 Emergency Description *
-            </label>
-            <textarea
-              value={form.type}
-              onChange={e => setForm({ ...form, type: e.target.value })}
-              placeholder="Describe the emergency (e.g. Patient unconscious not breathing...)"
-              rows={3}
-              style={{
-                width: "100%", background: "#0f172a", border: "1px solid #334155",
-                borderRadius: "8px", padding: "10px 14px", color: "white",
-                fontSize: "14px", resize: "vertical", boxSizing: "border-box", outline: "none"
-              }}
-            />
+            <div className="glass-panel" style={{ padding: 18, borderRadius: 20 }}>
+              <div className="eyebrow">GPS assist</div>
+              <p className="panel-subtitle" style={{ marginTop: 10 }}>Pull live coordinates from the device, then refine the address if needed.</p>
+              <button
+                onClick={getGPS}
+                disabled={gpsLoading}
+                className="primary-btn"
+                style={{ marginTop: 16, opacity: gpsLoading ? 0.7 : 1 }}
+              >
+                {gpsLoading ? "Detecting location..." : "Use current location"}
+              </button>
+              {gpsStatus && (
+                <div className="info-box" style={{ marginTop: 14 }}>
+                  {gpsStatus}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* GPS Button */}
-          <div style={{ marginBottom: "18px" }}>
-            <label style={{ display: "block", fontSize: "13px", color: "#94a3b8", marginBottom: "6px", fontWeight: "600" }}>
-              📍 Location *
-            </label>
+          <div className="field-stack" style={{ marginTop: 20 }}>
+            <div className="field">
+              <label>Location</label>
+              <input
+                type="text"
+                value={form.location}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                placeholder="Street, landmark, or auto-detected location"
+              />
+            </div>
 
-            {/* GPS Auto-detect Button */}
-            <button
-              onClick={getGPS}
-              disabled={gpsLoading}
-              style={{
-                width: "100%", padding: "10px", marginBottom: "10px",
-                background: gpsLoading ? "#334155" : "#0f4c8a",
-                color: "white", border: "1px solid #1d4ed8",
-                borderRadius: "8px", cursor: gpsLoading ? "not-allowed" : "pointer",
-                fontSize: "13px", fontWeight: "600", transition: "all 0.2s"
-              }}
-            >
-              {gpsLoading ? "📡 Detecting location..." : "📍 Use My Current Location (GPS)"}
-            </button>
-
-            {/* GPS Status */}
-            {gpsStatus && (
-              <div style={{
-                padding: "8px 12px", borderRadius: "6px", marginBottom: "8px",
-                background: gpsStatus.includes("✅") ? "#22c55e20" : gpsStatus.includes("❌") ? "#ef444420" : "#3b82f620",
-                color: gpsStatus.includes("✅") ? "#22c55e" : gpsStatus.includes("❌") ? "#ef4444" : "#3b82f6",
-                fontSize: "12px", fontWeight: "600"
-              }}>
-                {gpsStatus}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="field">
+                <label>Latitude</label>
+                <input
+                  type="number"
+                  value={form.latitude}
+                  onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+                  placeholder="Auto-filled by GPS"
+                />
               </div>
-            )}
-
-            {/* Manual Location Input */}
-            <input
-              type="text"
-              value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
-              placeholder="Or type location manually..."
-              style={{
-                width: "100%", background: "#0f172a", border: "1px solid #334155",
-                borderRadius: "8px", padding: "10px 14px", color: "white",
-                fontSize: "14px", boxSizing: "border-box", outline: "none"
-              }}
-            />
-          </div>
-
-          {/* Lat / Lng */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "18px" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "13px", color: "#94a3b8", marginBottom: "6px", fontWeight: "600" }}>
-                🌐 Latitude *
-              </label>
-              <input
-                type="number"
-                value={form.latitude}
-                onChange={e => setForm({ ...form, latitude: e.target.value })}
-                placeholder="Auto-filled by GPS"
-                style={{
-                  width: "100%", background: "#0f172a", border: "1px solid #334155",
-                  borderRadius: "8px", padding: "10px 14px", color: "white",
-                  fontSize: "14px", boxSizing: "border-box", outline: "none"
-                }}
-              />
+              <div className="field">
+                <label>Longitude</label>
+                <input
+                  type="number"
+                  value={form.longitude}
+                  onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                  placeholder="Auto-filled by GPS"
+                />
+              </div>
             </div>
-            <div>
-              <label style={{ display: "block", fontSize: "13px", color: "#94a3b8", marginBottom: "6px", fontWeight: "600" }}>
-                🌐 Longitude *
-              </label>
-              <input
-                type="number"
-                value={form.longitude}
-                onChange={e => setForm({ ...form, longitude: e.target.value })}
-                placeholder="Auto-filled by GPS"
-                style={{
-                  width: "100%", background: "#0f172a", border: "1px solid #334155",
-                  borderRadius: "8px", padding: "10px 14px", color: "white",
-                  fontSize: "14px", boxSizing: "border-box", outline: "none"
-                }}
-              />
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="field">
+                <label>Patient Name</label>
+                <input
+                  type="text"
+                  value={form.patientName}
+                  onChange={(e) => setForm({ ...form, patientName: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
+              <div className="field">
+                <label>Contact Number</label>
+                <input
+                  type="text"
+                  value={form.contactNumber}
+                  onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
+                  placeholder="Optional"
+                />
+              </div>
             </div>
           </div>
 
-          {/* Patient Name / Contact */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "24px" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "13px", color: "#94a3b8", marginBottom: "6px", fontWeight: "600" }}>
-                👤 Patient Name
-              </label>
-              <input
-                type="text"
-                value={form.patientName}
-                onChange={e => setForm({ ...form, patientName: e.target.value })}
-                placeholder="Optional"
-                style={{
-                  width: "100%", background: "#0f172a", border: "1px solid #334155",
-                  borderRadius: "8px", padding: "10px 14px", color: "white",
-                  fontSize: "14px", boxSizing: "border-box", outline: "none"
-                }}
-              />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "13px", color: "#94a3b8", marginBottom: "6px", fontWeight: "600" }}>
-                📞 Contact Number
-              </label>
-              <input
-                type="text"
-                value={form.contactNumber}
-                onChange={e => setForm({ ...form, contactNumber: e.target.value })}
-                placeholder="Optional"
-                style={{
-                  width: "100%", background: "#0f172a", border: "1px solid #334155",
-                  borderRadius: "8px", padding: "10px 14px", color: "white",
-                  fontSize: "14px", boxSizing: "border-box", outline: "none"
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Error */}
           {error && (
-            <div style={{
-              background: "#ef444420", border: "1px solid #ef444440",
-              borderRadius: "8px", padding: "12px", marginBottom: "16px",
-              color: "#ef4444", fontSize: "13px"
-            }}>
-              ❌ {error}
+            <div className="error-box" style={{ marginTop: 18 }}>
+              {error}
             </div>
           )}
 
-          {/* Submit */}
           <button
             onClick={handleSubmit}
             disabled={loading}
-            style={{
-              width: "100%", padding: "14px",
-              background: loading ? "#334155" : "#3b82f6",
-              color: "white", border: "none", borderRadius: "10px",
-              fontSize: "15px", fontWeight: "700",
-              cursor: loading ? "not-allowed" : "pointer", transition: "all 0.2s"
-            }}
+            className="primary-btn"
+            style={{ marginTop: 20, opacity: loading ? 0.7 : 1 }}
           >
-            {loading ? "⏳ Submitting..." : "🚨 Submit Emergency"}
+            {loading ? "Submitting..." : "Submit emergency"}
           </button>
         </div>
 
-        {/* Result */}
         {result && (
-          <div style={{
-            marginTop: "20px", background: "#1e293b",
-            borderRadius: "16px", padding: "24px",
-            border: `2px solid ${severityColor(result.severity)}`
-          }}>
-            <h3 style={{ margin: "0 0 16px", color: "white", fontSize: "16px" }}>
-              ✅ Emergency Submitted Successfully!
-            </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div
+            className="glass-panel strong"
+            style={{
+              marginTop: 20,
+              padding: 24,
+              borderColor: `${severityColor(result.severity)}55`,
+            }}
+          >
+            <span className="eyebrow" style={{ color: severityColor(result.severity) }}>Submission complete</span>
+            <h3 className="panel-title" style={{ marginTop: 12 }}>Emergency dispatched successfully</h3>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginTop: 18 }}>
               {[
                 { label: "Emergency ID", value: `#${result.id}` },
                 { label: "AI Severity", value: result.severity, color: severityColor(result.severity) },
-                { label: "Status", value: result.status, color: result.status === "ASSIGNED" ? "#22c55e" : "#f97316" },
+                { label: "Status", value: result.status, color: result.status === "ASSIGNED" ? "#4da2ff" : "#ffb34d" },
+                { label: "Responder", value: result.responderName || "Not assigned" },
                 { label: "Hospital", value: result.hospitalName || "Not assigned" },
-              ].map((item, i) => (
-                <div key={i} style={{ background: "#0f172a", borderRadius: "8px", padding: "12px" }}>
-                  <div style={{ fontSize: "11px", color: "#64748b", marginBottom: "4px" }}>{item.label}</div>
-                  <div style={{ fontWeight: "700", color: item.color || "white", fontSize: "15px" }}>{item.value}</div>
+              ].map((item) => (
+                <div key={item.label} className="glass-panel" style={{ padding: 16, borderRadius: 18 }}>
+                  <div className="eyebrow" style={{ color: "var(--muted)" }}>{item.label}</div>
+                  <div style={{ marginTop: 12, fontSize: 20, fontWeight: 800, color: item.color || "var(--text)" }}>{item.value}</div>
                 </div>
               ))}
             </div>
           </div>
         )}
-
       </div>
     </div>
   );

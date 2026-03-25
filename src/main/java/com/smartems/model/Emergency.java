@@ -17,23 +17,25 @@ public class Emergency {
     private String patientName;
     private String contactNumber;
     private double latitude;
-private double longitude;
-private String hospitalName;
+    private double longitude;
+    private String hospitalName;
+    private Long responderId;
+    private String responderName;
 
-private String severity;
+    private String severity;
 
-public String getSeverity() {
-    return severity;
-}
+    public String getSeverity() {
+        return severity;
+    }
 
-public void setSeverity(String severity) {
-    this.severity = severity;
-}
+    public void setSeverity(String severity) {
+        this.severity = severity;
+    }
     public double getLatitude() { return latitude; }
     public void setLatitude(double latitude) { this.latitude = latitude; }
 
-public double getLongitude() { return longitude; }
-public void setLongitude(double longitude) { this.longitude = longitude; }
+    public double getLongitude() { return longitude; }
+    public void setLongitude(double longitude) { this.longitude = longitude; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -49,4 +51,8 @@ public void setLongitude(double longitude) { this.longitude = longitude; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
     public String getHospitalName() { return hospitalName; }
     public void setHospitalName(String hospitalName) { this.hospitalName = hospitalName; }
+    public Long getResponderId() { return responderId; }
+    public void setResponderId(Long responderId) { this.responderId = responderId; }
+    public String getResponderName() { return responderName; }
+    public void setResponderName(String responderName) { this.responderName = responderName; }
 }

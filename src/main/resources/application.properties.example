@@ -1,0 +1,12 @@
+spring.application.name=smartems
+server.port=8080
+spring.datasource.url=${DB_URL:jdbc:mysql://localhost:3306/smartems}
+spring.datasource.username=${DB_USERNAME:root}
+spring.datasource.password=${DB_PASSWORD:}
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect
+spring.security.user.name=${SPRING_SECURITY_USERNAME:admin}
+spring.security.user.password=${SPRING_SECURITY_PASSWORD:admin}
+openrouter.api.key=${OPENROUTER_API_KEY:}
+jwt.secret=${JWT_SECRET_BASE64:}
