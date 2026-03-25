@@ -1,55 +1,92 @@
-# SmartEMS
+# SmartEMS – AI-Powered Real-Time Emergency Response Platform
 
-SmartEMS is an AI-powered real-time emergency response and management platform that improves emergency reporting, severity assessment, responder coordination, and live monitoring. It combines emergency reporting, GPS location capture, AI triage, automatic responder assignment, hospital mapping, live dashboard updates, responder workflow tracking, and first-aid guidance in one system.
+SmartEMS is an all-in-one emergency response and management web application designed to assist citizens, responders, and administrators. It provides features like emergency reporting, AI-powered severity detection, responder assignment, hospital mapping, live dashboard monitoring, tactical map tracking, and first-aid support to ensure faster and smarter emergency handling.
 
 ## Features
-- JWT-based authentication and role-based access
-- Public SOS and emergency reporting
+
+### For Users / Public:
+- Secure login/signup with JWT authentication
+- Public SOS emergency reporting
+- Standard emergency form submission
 - GPS-based location capture
-- AI severity classification
-- Automatic responder assignment
-- Hospital association support
-- Real-time dashboard and live map
-- Responder workflow: `ASSIGNED -> ACCEPTED -> ARRIVED -> CLOSED`
-- AI first-aid guidance
-- Audit logging and secure secret handling
+- AI-powered emergency severity detection
+- AI first-aid guidance during emergencies
+
+### For Responders:
+- Secure responder login
+- Linked responder profile
+- View assigned emergency
+- Update emergency workflow in real time
+- Workflow actions:
+  - Accept case
+  - Arrive at scene
+  - Close emergency
+
+### For Admin / Control Room:
+- Live emergency dashboard
+- Real-time responder tracking
+- Hospital visibility
+- Severity distribution analytics
+- Tactical live map for emergencies, responders, and hospitals
+- Audit logs for system actions
 
 ## Tech Stack
-- **Frontend:** React, Leaflet, Recharts
-- **Backend:** Java 21, Spring Boot, Spring Security, Spring WebSocket
-- **Database:** MySQL, JPA/Hibernate
-- **Security:** JWT
-- **AI:** OpenRouter API
+- **Frontend:** React, CSS, JavaScript
+- **Backend:** Java 21, Spring Boot
+- **Database:** MySQL
+- **Security:** Spring Security, JWT
+- **Realtime:** WebSocket, STOMP, SockJS
+- **AI Integration:** OpenRouter API
+- **Maps:** Leaflet, React Leaflet
+- **Charts:** Recharts
 
-## Run Locally
+## AI Integration
+- **AI Severity Detection:** Classifies emergency cases into CRITICAL, HIGH, MEDIUM, or LOW
+- **First-Aid Assistant:** Provides immediate emergency guidance while responders are on the way
 
-### Backend
-```bash
-./mvnw spring-boot:run
-Frontend
-cd smartems-frontend
-npm install
-npm start
-Environment Variables
-DB_URL=jdbc:mysql://localhost:3306/smartems
-DB_USERNAME=root
-DB_PASSWORD=your_mysql_password
-OPENROUTER_API_KEY=your_openrouter_api_key
-JWT_SECRET_BASE64=your_base64_secret
-Team
-Archives
-Saveetha Engineering College, Chennai
+## Application Preview
+- Login / Authentication
+- Dashboard
+- Emergency Form
+- SOS Emergency Panel
+- Live Map
+- Responder Workflow
+- AI First-Aid Assistant
 
+## How to Use
 
-Your current one is fine, but this version is a bit cleaner because:
-- `Real-time` is written properly
-- wording is smoother
-- formatting is slightly more professional
+### For Public Users
+- Login or use SOS
+- Report emergency details
+- Allow GPS location capture
+- Receive AI severity-based response support
+- Access first-aid instructions
 
-If you want, I can also give you a **very attractive GitHub README** with:
-- demo section
-- screenshots
-- architecture image
-- feature highlights
-- badges
+### For Responders
+- Login with responder account
+- View assigned case
+- Accept emergency
+- Mark arrival
+- Close emergency after completion
+
+### For Admin
+- Monitor dashboard
+- View live emergency feed
+- Track responders and hospitals
+- Review emergency lifecycle and audit logs
+
+## Future Enhancements
+- Hospital capacity-based assignment
+- Real route and ETA integration
+- SMS / push notifications
+- Dedicated dispatcher dashboard
+- Dedicated hospital dashboard
+- Predictive emergency analytics
+- Multilingual support
+
+## Team
+**Archives**  
+Saveetha Engineering College  
+Chennai, Tamil Nadu, India
+
 
